@@ -214,9 +214,11 @@ def handle_callback(conn, cq):
              [[btn("💳 Deposit", "deposit"), btn("🏬 Shop", "shop:0")],
               [btn("⬅️ Back", "home")]])
     elif data == "support":
+        handle = store.get_setting(conn, "support_handle") \
+            or CFG['support_handle']
         edit(chat_id, msg_id,
              f"🤝 <b>Support</b>\n\nMessage us any time: "
-             f"{CFG['support_handle']}\nWe reply as fast as we can.",
+             f"{handle}\nWe reply as fast as we can.",
              [[btn("⬅️ Back", "home")]])
     elif data == "refer":
         link = f"https://t.me/{BOT_USERNAME}?start=ref_{user['id']}" \
@@ -309,7 +311,9 @@ def main():
     conn = store.db()
     total, buyable, _ = store.sync_products(conn, CFG)
     print(f"@{BOT_USERNAME} live. Synced {total} products ({buyable} buyable).")
-    threading.Thread(target=sync_loop, args=(store.db(check_same_thread=False),), daemon=True).start()
+    threading.Thread(target=sync_loop,
+                     args=(store.db(check_same_thread=False),),
+                     daemon=True).start()
     offset = 0
     while True:
         try:

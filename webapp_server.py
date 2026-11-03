@@ -71,6 +71,10 @@ def public_product(p):
             "unlimited": bool(p["unlimited"])}
 
 
+def is_admin(user_id):
+    return user_id in (CFG.get("admin_ids") or [])
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -101,6 +105,87 @@ class Handler(BaseHTTPRequestHandler):
                                  user.get("first_name", ""))
         return user
 
+    # ------------------------------------------------------------ admin
+    # Every /api/admin/* call needs a verified Telegram user whose ID is
+    # in config admin_ids. The Mini App only shows the Admin tab then.
+
+    def _admin(self, path, payload):
+        if path == "/api/admin/overview":
+            data = store.admin_overview(CONN)
+            try:
+                bal = store.insight_balance()
+                data["insight"] = {
+                    "balance_usdt": bal.get("balance_usdt", bal.get("balance"))}
+            except Exception:
+                data["insight"] = None
+            return self._json({"ok": True, **data})
+        if path == "/api/admin/users":
+            return self._json({"ok": True,
+                               "users": store.admin_users(CONN)})
+        if path == "/api/admin/orders":
+            return self._json({"ok": True,
+                               "orders": store.admin_orders(CONN)})
+        if path == "/api/admin/products":
+            out = [{"id": p["id"], "name": p["name"],
+                    "cost_usdt": p["cost_usdt"],
+                    "price_usdt": p["price_usdt"],
+                    "price_override": p.get("price_override"),
+                    "stock": p["stock"],
+                    "available": bool(p["available"])}
+                   for p in store.list_products(CONN, CFG)]
+            return self._json({"ok": True, "products": out})
+        if path == "/api/admin/credit":
+            try:
+                tid = int(payload.get("telegram_id", 0))
+                amount = float(payload.get("amount", 0))
+            except (TypeError, ValueError):
+                return self._json({"ok": False, "reason": "bad_input"}, 400)
+            if amount == 0 or abs(amount) > 100000:
+                return self._json({"ok": False, "reason": "bad_amount"}, 400)
+            new = store.admin_adjust_balance(CONN, tid, amount)
+            if new is None:
+                return self._json({"ok": False, "reason": "no_user"}, 404)
+            return self._json({"ok": True, "balance_usdt": new})
+        if path == "/api/admin/price":
+            try:
+                pid = int(payload.get("product_id", 0))
+            except (TypeError, ValueError):
+                return self._json({"ok": False, "reason": "bad_input"}, 400)
+            raw = payload.get("price")
+            if raw in (None, ""):
+                price = None
+            else:
+                try:
+                    price = round(float(raw), 2)
+                except (TypeError, ValueError):
+                    return self._json({"ok": False, "reason": "bad_price"}, 400)
+                if price <= 0:
+                    return self._json({"ok": False, "reason": "bad_price"}, 400)
+            if not store.admin_set_price(CONN, pid, price):
+                return self._json({"ok": False, "reason": "no_product"}, 404)
+            return self._json({"ok": True})
+        if path == "/api/admin/settings":
+            cfg = store.effective_config(CONN, CFG)
+            return self._json({
+                "ok": True, "markup_percent": cfg["markup_percent"],
+                "min_profit_usdt": cfg["min_profit_usdt"],
+                "support_handle": cfg["support_handle"],
+                "live_orders": bool(CFG.get("live_orders"))})
+        if path == "/api/admin/settings_save":
+            try:
+                markup = float(payload.get("markup_percent"))
+                min_profit = float(payload.get("min_profit_usdt"))
+            except (TypeError, ValueError):
+                return self._json({"ok": False, "reason": "bad_input"}, 400)
+            handle = str(payload.get("support_handle", "")).strip()
+            if not (0 <= markup <= 1000) or min_profit < 0 or not handle:
+                return self._json({"ok": False, "reason": "bad_input"}, 400)
+            store.set_setting(CONN, "markup_percent", markup)
+            store.set_setting(CONN, "min_profit_usdt", min_profit)
+            store.set_setting(CONN, "support_handle", handle)
+            return self._json({"ok": True})
+        return self._json({"ok": False, "reason": "not_found"}, 404)
+
     def do_GET(self):
         if self.path.startswith("/api/products"):
             qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
@@ -122,6 +207,13 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         payload = self._payload()
+        if self.path.startswith("/api/admin/"):
+            user = self._user_or_401(payload)
+            if not user:
+                return
+            if not is_admin(user["id"]):
+                return self._json({"ok": False, "reason": "not_admin"}, 403)
+            return self._admin(self.path, payload)
         if self.path == "/api/me":
             user = self._user_or_401(payload)
             if not user:
@@ -134,6 +226,7 @@ class Handler(BaseHTTPRequestHandler):
                 "telegram_id": user["id"],
                 "first_name": row["first_name"],
                 "balance_usdt": row["balance_usdt"],
+                "is_admin": is_admin(user["id"]),
                 "store_name": CFG["store_name"], "orders": orders})
         if self.path == "/api/buy":
             user = self._user_or_401(payload)

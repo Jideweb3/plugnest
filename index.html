@@ -150,6 +150,22 @@ nav button.on{color:#fff}
 nav button .ic{display:flex;justify-content:center;margin-bottom:3px}
 nav button .ic svg{width:23px;height:23px;fill:currentColor;display:block}
 .heroic{display:flex;justify-content:center}
+/* ---------- admin dashboard ---------- */
+.subchips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 2px;scrollbar-width:none}
+.subchips::-webkit-scrollbar{display:none}
+.ainput{background:#17171b;border:1px solid #2b2b31;color:#fff;border-radius:10px;padding:9px 10px;font-size:13px;width:100%;outline:none;font-family:inherit}
+.abtn{border:none;border-radius:10px;padding:9px 12px;font-size:13px;font-weight:700;background:#fff;color:#09090b;cursor:pointer;white-space:nowrap}
+.abtn.ghost{background:#26262b;color:#fff}
+.abtn:active{transform:scale(.97)}
+.arow{display:flex;gap:8px;align-items:center}
+.uitem{border-top:1px solid #232329;padding:11px 0}
+.uitem:first-of-type{border-top:none}
+.uname{font-weight:700;font-size:14px}
+.umeta{color:#a1a1aa;font-size:12px;margin-top:2px;line-height:1.45}
+.ubal{margin-left:auto;text-align:right;font-weight:800;white-space:nowrap}
+.ovr{color:#fbbf24;font-weight:700}
+.setrow{margin-bottom:12px}
+.setrow label{display:block;font-size:12px;color:#a1a1aa;margin-bottom:6px;font-weight:600}
 .heroic svg{width:38px;height:38px;fill:#fff;display:block}
 </style>
 </head>
@@ -170,6 +186,7 @@ nav button .ic svg{width:23px;height:23px;fill:currentColor;display:block}
   <section id="pg-deposit" class="page"><div class="panel"><div class="heroic"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2m0-2h10V8H12m4 5.5a1.5 1.5 0 0 1-1.5-1.5a1.5 1.5 0 0 1 1.5-1.5a1.5 1.5 0 0 1 1.5 1.5a1.5 1.5 0 0 1-1.5 1.5"/></svg></div><div class="paneltitle center">Deposit</div><p class="note center">Deposits are opening very soon — the payment method is being set up. Once live, you will pick an amount here, pay, and your balance will be credited automatically.</p><button class="bigbtn off" disabled>Coming soon</button></div></section>
   <section id="pg-profile" class="page"><div id="prof"></div><div class="panel" style="margin-top:12px"><div class="paneltitle">My orders</div><div id="orders"></div></div></section>
   <section id="pg-refer" class="page"><div class="panel"><div class="heroic"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M9.06 1.93C7.17 1.92 5.33 3.74 6.17 6H3a2 2 0 0 0-2 2v2a1 1 0 0 0 1 1h9V8h2v3h9a1 1 0 0 0 1-1V8a2 2 0 0 0-2-2h-3.17C19 2.73 14.6.42 12.57 3.24L12 4l-.57-.78c-.63-.89-1.5-1.28-2.37-1.29M9 4c.89 0 1.34 1.08.71 1.71S8 5.89 8 5a1 1 0 0 1 1-1m6 0c.89 0 1.34 1.08.71 1.71S14 5.89 14 5a1 1 0 0 1 1-1M2 12v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-8h-9v8h-2v-8z"/></svg></div><div class="paneltitle center">Refer &amp; Earn</div><p class="note center">Share your link and earn when friends buy. Your personal link:</p><div class="linkbox" id="reflink" style="margin-top:12px"></div><button class="bigbtn" id="copyref">Copy link</button></div></section>
+  <section id="pg-admin" class="page"><div class="panel"><div class="heroic"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5zm0 4a3 3 0 0 1 3 3 3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1 3-3m5.13 12A9.7 9.7 0 0 1 12 20.92A9.7 9.7 0 0 1 6.87 17c-.34-.5-.63-1-.87-1.53 0-1.65 2.71-3 6-3s6 1.32 6 3c-.24.53-.53 1.03-.87 1.53"/></svg></div><div class="paneltitle center">Admin Dashboard</div><p class="note center">Only you can see this tab. Manage users, prices and settings here.</p></div><div class="subchips" id="asubs" style="margin-top:12px"><button class="chip on" data-asub="overview">Overview</button><button class="chip" data-asub="users">Users</button><button class="chip" data-asub="orders">Orders</button><button class="chip" data-asub="products">Products</button><button class="chip" data-asub="settings">Settings</button></div><div id="abody" style="margin-top:12px"><p class="note">Loading…</p></div></section>
 </main>
 
 <div id="scrim"></div>
@@ -181,6 +198,7 @@ nav button .ic svg{width:23px;height:23px;fill:currentColor;display:block}
   <button data-tab="deposit"><span class="ic"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2m0-2h10V8H12m4 5.5a1.5 1.5 0 0 1-1.5-1.5a1.5 1.5 0 0 1 1.5-1.5a1.5 1.5 0 0 1 1.5 1.5a1.5 1.5 0 0 1-1.5 1.5"/></svg></span>Deposit</button>
   <button data-tab="profile"><span class="ic"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 4a4 4 0 0 1 4 4a4 4 0 0 1-4 4a4 4 0 0 1-4-4a4 4 0 0 1 4-4m0 10c4.42 0 8 1.79 8 4v2H4v-2c0-2.21 3.58-4 8-4"/></svg></span>Profile</button>
   <button data-tab="refer"><span class="ic"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M9.06 1.93C7.17 1.92 5.33 3.74 6.17 6H3a2 2 0 0 0-2 2v2a1 1 0 0 0 1 1h9V8h2v3h9a1 1 0 0 0 1-1V8a2 2 0 0 0-2-2h-3.17C19 2.73 14.6.42 12.57 3.24L12 4l-.57-.78c-.63-.89-1.5-1.28-2.37-1.29M9 4c.89 0 1.34 1.08.71 1.71S8 5.89 8 5a1 1 0 0 1 1-1m6 0c.89 0 1.34 1.08.71 1.71S14 5.89 14 5a1 1 0 0 1 1-1M2 12v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-8h-9v8h-2v-8z"/></svg></span>Refer</button>
+  <button data-tab="admin" id="tabbtn-admin" style="display:none"><span class="ic"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5zm0 4a3 3 0 0 1 3 3 3 3 0 0 1-3 3 3 3 0 0 1-3-3 3 3 0 0 1 3-3m5.13 12A9.7 9.7 0 0 1 12 20.92A9.7 9.7 0 0 1 6.87 17c-.34-.5-.63-1-.87-1.53 0-1.65 2.71-3 6-3s6 1.32 6 3c-.24.53-.53 1.03-.87 1.53"/></svg></span>Admin</button>
 </nav>
 
 <script>
@@ -283,6 +301,7 @@ function openTab(name){
   document.querySelectorAll(".page").forEach(s=>s.classList.remove("on"));
   $("pg-"+name).classList.add("on");
   if (name==="profile") loadMe();
+  if (name==="admin") adminLoad();
   window.scrollTo(0,0);
 }
 function openProduct(id){
@@ -341,12 +360,75 @@ function loadMe(){
      </div>`;
     $("orders").innerHTML = d.orders.length ? d.orders.map(o=>`<div class="order"><b>#${o.id}</b> — ${o.product_name}<div class="d">${money(o.price_usdt)} • ${o.status}${o.test_mode?" • test":""}</div>${o.delivered?`<div style="margin-top:5px;white-space:pre-wrap;word-break:break-all">${o.delivered}</div>`:""}</div>`).join("") : `<p class="note">No orders yet. Your delivered products will appear here.</p>`;
     $("reflink").textContent = "https://t.me/Plugnestbot?start=ref_"+d.telegram_id;
+    if (d.is_admin) $("tabbtn-admin").style.display="";
   }).catch(()=>{});
 }
 $("q").addEventListener("input", renderGrid);
 $("scrim").onclick=closeSheet;
 document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{ hap(); openTab(b.dataset.tab); });
 $("copyref").onclick=()=>{ const t=$("reflink").textContent; if (navigator.clipboard) navigator.clipboard.writeText(t); toast("Referral link copied"); hap("ok"); };
+/* ---------------- admin dashboard ---------------- */
+let ASUB="overview";
+function fmtDate(ts){ const d=new Date((ts||0)*1000); return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" "+d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"}); }
+function refreshProducts(){ api("/api/products").then(d=>{ PRODUCTS=d.products||[]; renderGrid(); }).catch(()=>{}); }
+async function adminLoad(){
+  const b=$("abody"); if(!b) return; b.innerHTML='<p class="note">Loading…</p>';
+  document.querySelectorAll("#asubs .chip").forEach(c=>c.classList.toggle("on", c.dataset.asub===ASUB));
+  try{
+    if (ASUB==="overview"){
+      const d=await api("/api/admin/overview",{}); if(!d.ok) throw 0;
+      let insTxt="—"; const ins=d.insight;
+      if (ins){ const v=(ins.balance_usdt!==undefined?ins.balance_usdt:(ins.balance!==undefined?ins.balance:ins.available_balance)); if (v!==undefined && v!==null) insTxt=money(v); }
+      b.innerHTML=`<div class="panel"><div class="paneltitle">Store overview</div>
+      <div class="stats"><div class="stat"><small>Users</small><b>${d.users}</b></div><div class="stat"><small>Orders</small><b>${d.orders}</b></div></div>
+      <div class="stats"><div class="stat"><small>Revenue</small><b>${money(d.revenue)}</b></div><div class="stat"><small>Profit</small><b>${money(d.profit)}</b></div></div>
+      <div class="stats"><div class="stat"><small>Customer balances</small><b>${money(d.balances_held)}</b></div><div class="stat"><small>Insight fund</small><b>${insTxt}</b></div></div>
+      <div class="stats"><div class="stat"><small>Products in stock</small><b>${d.products_available} / ${d.products_total}</b></div><div class="stat"><small>Restocks seen</small><b>${d.restocks}</b></div></div></div>`;
+    } else if (ASUB==="users"){
+      const d=await api("/api/admin/users",{}); if(!d.ok) throw 0;
+      b.innerHTML=`<div class="panel"><div class="paneltitle">Users (${d.users.length})</div>`+(d.users.length? d.users.map(u=>`
+        <div class="uitem"><div class="arow"><div><div class="uname">${u.first_name||"Customer"}</div><div class="umeta">${u.username?("@"+u.username+" • "):""}ID ${u.telegram_id} • ${u.orders_count} orders • joined ${fmtDate(u.created_at)}</div></div><div class="ubal">${money(u.balance_usdt)}</div></div>
+        <div class="arow" style="margin-top:8px"><input class="ainput" id="amt-${u.telegram_id}" type="number" step="0.01" min="0" placeholder="Amount $"><button class="abtn" onclick="adminCredit(${u.telegram_id},1)">Add</button><button class="abtn ghost" onclick="adminCredit(${u.telegram_id},-1)">Remove</button></div></div>`).join("") : '<p class="note">No users yet.</p>')+`</div>`;
+    } else if (ASUB==="orders"){
+      const d=await api("/api/admin/orders",{}); if(!d.ok) throw 0;
+      b.innerHTML=`<div class="panel"><div class="paneltitle">Latest orders</div>`+(d.orders.length? d.orders.map(o=>{ let codes=""; try{ const c=JSON.parse(o.codes||"[]"); codes=Array.isArray(c)?c.join("\n"):String(c); }catch(e){}
+        return `<div class="order"><b>#${o.id}</b> — ${o.product_name}<div class="d">${money(o.price_usdt)} • profit ${money(o.profit_usdt)} • ${o.status}${o.test_mode?" • test":""} • ${fmtDate(o.created_at)}</div><div class="d">by ${o.user_name||"Customer"} (ID ${o.telegram_id})</div>${codes?`<div style="margin-top:5px;white-space:pre-wrap;word-break:break-all">${codes}</div>`:""}</div>`; }).join("") : '<p class="note">No orders yet.</p>')+`</div>`;
+    } else if (ASUB==="products"){
+      const d=await api("/api/admin/products",{}); if(!d.ok) throw 0;
+      b.innerHTML=`<div class="panel"><div class="paneltitle">Products &amp; prices</div><p class="note">Cost is what Insight charges you. Price is what customers pay. Set a custom price on any product, or keep the automatic markup price.</p>`+d.products.map(p=>{ const ovr=(p.price_override!==null&&p.price_override!==undefined);
+        return `<div class="uitem"><div class="arow"><div><div class="uname" style="font-size:13px">${p.name}</div><div class="umeta">Cost ${money(p.cost_usdt)} • ${p.available?(p.stock+" in stock"):"Sold out"}${ovr?' • <span class="ovr">custom price</span>':""}</div></div><div class="ubal">${money(p.price_usdt)}</div></div>
+        <div class="arow" id="pe-${p.id}" style="display:none;margin-top:8px"><input class="ainput" id="pr-${p.id}" type="number" step="0.01" min="0" placeholder="New price $" value="${ovr?p.price_override:""}"><button class="abtn" onclick="adminPrice(${p.id})">Save</button><button class="abtn ghost" onclick="adminPriceReset(${p.id})">Auto</button></div>
+        <button class="abtn ghost" style="margin-top:8px" onclick="document.getElementById('pe-${p.id}').style.display='flex'">Edit price</button></div>`; }).join("")+`</div>`;
+    } else if (ASUB==="settings"){
+      const d=await api("/api/admin/settings",{}); if(!d.ok) throw 0;
+      b.innerHTML=`<div class="panel"><div class="paneltitle">Settings</div>
+      <div class="setrow"><label>Markup on every product (%)</label><input class="ainput" id="set-markup" type="number" step="1" min="0" value="${d.markup_percent}"></div>
+      <div class="setrow"><label>Minimum profit per sale ($)</label><input class="ainput" id="set-minprofit" type="number" step="0.01" min="0" value="${d.min_profit_usdt}"></div>
+      <div class="setrow"><label>Support handle (shown to customers)</label><input class="ainput" id="set-support" type="text" value="${d.support_handle}"></div>
+      <p class="note">Live orders are currently <b>${d.live_orders?"ON — real money":"OFF — test mode"}</b>. That switch stays with Muse for safety; just ask in chat to change it.</p>
+      <button class="bigbtn" onclick="adminSaveSettings()">Save settings</button></div>`;
+    }
+  }catch(e){ b.innerHTML='<p class="note">Could not load this section. Switch tabs and come back to retry.</p>'; }
+}
+async function adminCredit(tid, sign){
+  const inp=$("amt-"+tid); const v=parseFloat(inp&&inp.value); if(!v||v<=0) return toast("Enter an amount first");
+  const r=await api("/api/admin/credit",{telegram_id:tid, amount: sign*v});
+  if (r.ok){ toast("Balance updated: "+money(r.balance_usdt)); hap("ok"); adminLoad(); if (ME && ME.telegram_id===tid) loadMe(); } else toast("Could not update balance");
+}
+async function adminPrice(pid){
+  const v=$("pr-"+pid).value; if(!v) return toast("Type a price, or tap Auto");
+  const r=await api("/api/admin/price",{product_id:pid, price: parseFloat(v)});
+  if (r.ok){ toast("Price saved"); hap("ok"); adminLoad(); refreshProducts(); } else toast("Could not save price");
+}
+async function adminPriceReset(pid){
+  const r=await api("/api/admin/price",{product_id:pid, price: null});
+  if (r.ok){ toast("Back to markup price"); hap("ok"); adminLoad(); refreshProducts(); } else toast("Could not reset price");
+}
+async function adminSaveSettings(){
+  const r=await api("/api/admin/settings_save",{markup_percent: parseFloat($("set-markup").value), min_profit_usdt: parseFloat($("set-minprofit").value), support_handle: $("set-support").value});
+  if (r.ok){ toast("Settings saved — prices updated"); hap("ok"); refreshProducts(); } else toast("Check the values and try again");
+}
+document.querySelectorAll("#asubs .chip").forEach(c=>c.onclick=()=>{ ASUB=c.dataset.asub; hap(); adminLoad(); });
 /* splash name letters */
 $("spname").innerHTML="PlugNest".split("").map((c,i)=>`<span style="animation-delay:${0.15+i*0.05}s">${c}</span>`).join("");
 $("grid").innerHTML='<div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div>';

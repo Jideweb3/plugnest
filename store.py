@@ -37,6 +37,43 @@ def load_config():
         return json.load(f)
 
 
+# ------------------------------------------------------- runtime settings
+# Values the owner can change from the admin dashboard. They live in the
+# DB settings table and win over config.json wherever both exist.
+
+def get_setting(conn, key, default=None):
+    if conn is None:
+        return default
+    row = conn.execute("SELECT value FROM settings WHERE key=?",
+                       (key,)).fetchone()
+    if not row:
+        return default
+    try:
+        return json.loads(row[0])
+    except (json.JSONDecodeError, TypeError):
+        return row[0]
+
+
+def set_setting(conn, key, value):
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES (?,?)"
+        " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        (key, json.dumps(value)))
+    conn.commit()
+
+
+def effective_config(conn, cfg=None):
+    """config.json merged with dashboard-edited settings (dashboard wins
+    for markup_percent, min_profit_usdt and support_handle)."""
+    base = dict(cfg or load_config())
+    if conn is not None:
+        for key in ("markup_percent", "min_profit_usdt", "support_handle"):
+            v = get_setting(conn, key)
+            if v is not None:
+                base[key] = v
+    return base
+
+
 # ---------------------------------------------------------------- Insight
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -132,7 +169,14 @@ def db(check_same_thread=True):
         product_id INTEGER, product_name TEXT, new_stock INTEGER,
         created_at INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY, value TEXT
+    );
     """)
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(products)")]
+    if "price_override" not in cols:
+        conn.execute("ALTER TABLE products ADD COLUMN price_override REAL")
+        conn.commit()
     return conn
 
 
@@ -212,29 +256,30 @@ def sync_products(conn, cfg=None):
     return len(fresh), buyable, restocked
 
 
+def _priced(d, cfg):
+    """Apply the selling price: a per-product override from the admin
+    dashboard wins, otherwise cost + markup from the effective config."""
+    d["price_usdt"] = selling_price(d["cost_usdt"], cfg)
+    if d.get("price_override") is not None:
+        d["price_usdt"] = round(float(d["price_override"]), 2)
+    d["profit_usdt"] = round(d["price_usdt"] - d["cost_usdt"], 2)
+    return d
+
+
 def list_products(conn, cfg=None):
-    cfg = cfg or load_config()
+    cfg = effective_config(conn, cfg)
     rows = conn.execute(
         "SELECT * FROM products ORDER BY available DESC, name").fetchall()
-    out = []
-    for r in rows:
-        d = dict(r)
-        d["price_usdt"] = selling_price(d["cost_usdt"], cfg)
-        d["profit_usdt"] = round(d["price_usdt"] - d["cost_usdt"], 2)
-        out.append(d)
-    return out
+    return [_priced(dict(r), cfg) for r in rows]
 
 
 def get_product(conn, product_id, cfg=None):
-    cfg = cfg or load_config()
+    cfg = effective_config(conn, cfg)
     row = conn.execute("SELECT * FROM products WHERE id=?",
                        (product_id,)).fetchone()
     if not row:
         return None
-    d = dict(row)
-    d["price_usdt"] = selling_price(d["cost_usdt"], cfg)
-    d["profit_usdt"] = round(d["price_usdt"] - d["cost_usdt"], 2)
-    return d
+    return _priced(dict(row), cfg)
 
 
 # ---------------------------------------------------------------- buying
@@ -286,3 +331,66 @@ def order_history(conn, telegram_id, limit=10):
     return conn.execute(
         "SELECT * FROM orders WHERE telegram_id=? ORDER BY id DESC LIMIT ?",
         (telegram_id, limit)).fetchall()
+
+
+# ---------------------------------------------------------------- admin
+
+def admin_overview(conn):
+    one = lambda sql: conn.execute(sql).fetchone()[0]  # noqa: E731
+    return {
+        "users": one("SELECT COUNT(*) FROM users"),
+        "balances_held": round(one(
+            "SELECT COALESCE(SUM(balance_usdt),0) FROM users"), 2),
+        "orders": one("SELECT COUNT(*) FROM orders"),
+        "revenue": round(one(
+            "SELECT COALESCE(SUM(price_usdt),0) FROM orders"
+            " WHERE status='delivered'"), 2),
+        "profit": round(one(
+            "SELECT COALESCE(SUM(profit_usdt),0) FROM orders"
+            " WHERE status='delivered'"), 2),
+        "products_total": one("SELECT COUNT(*) FROM products"),
+        "products_available": one(
+            "SELECT COUNT(*) FROM products WHERE available=1"),
+        "restocks": one("SELECT COUNT(*) FROM restocks"),
+    }
+
+
+def admin_users(conn, limit=200):
+    rows = conn.execute(
+        "SELECT u.*, (SELECT COUNT(*) FROM orders o"
+        " WHERE o.telegram_id=u.telegram_id) AS orders_count"
+        " FROM users u ORDER BY u.created_at DESC LIMIT ?",
+        (limit,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def admin_orders(conn, limit=50):
+    rows = conn.execute(
+        "SELECT o.*, u.first_name AS user_name, u.username AS user_username"
+        " FROM orders o LEFT JOIN users u ON u.telegram_id=o.telegram_id"
+        " ORDER BY o.id DESC LIMIT ?", (limit,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def admin_adjust_balance(conn, telegram_id, delta):
+    """Add (or remove, when delta is negative) balance from the admin
+    dashboard. Never lets a balance go below zero. Returns the new
+    balance, or None when the user does not exist."""
+    row = conn.execute("SELECT balance_usdt FROM users WHERE telegram_id=?",
+                       (telegram_id,)).fetchone()
+    if not row:
+        return None
+    new = max(0.0, round(row["balance_usdt"] + float(delta), 2))
+    conn.execute("UPDATE users SET balance_usdt=? WHERE telegram_id=?",
+                 (new, telegram_id))
+    conn.commit()
+    return new
+
+
+def admin_set_price(conn, product_id, price):
+    """Set a per-product selling-price override (price=None clears it
+    back to the normal markup price)."""
+    cur = conn.execute("UPDATE products SET price_override=? WHERE id=?",
+                       (price, product_id))
+    conn.commit()
+    return cur.rowcount == 1
