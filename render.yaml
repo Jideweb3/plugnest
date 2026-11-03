@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: plugnest
+    env: python
+    plan: free
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run_all.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: BOT_TOKEN
+        sync: false
+      - key: INSIGHT_API_KEY
+        sync: false

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Store</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; font-family: system-ui, sans-serif; background:#0e1621; color:#fff; }
+  header { position:sticky; top:0; background:#17212b; padding:12px 16px; display:flex;
+           justify-content:space-between; align-items:center; z-index:5; }
+  header .name { font-weight:700; font-size:17px; }
+  .bal { background:#2b5278; padding:5px 12px; border-radius:999px; font-size:14px; }
+  .search { padding:10px 16px 0; }
+  .search input { width:100%; box-sizing:border-box; padding:10px 12px; border-radius:10px;
+                  border:0; background:#17212b; color:#fff; font-size:15px; }
+  .grid { padding:12px 16px 84px; display:grid; gap:10px; }
+  .card { background:#17212b; border-radius:14px; padding:14px; cursor:pointer; }
+  .card.out { opacity:.45; cursor:default; }
+  .card .t { font-size:16px; font-weight:600; }
+  .card .p { margin-top:6px; color:#7f91a4; font-size:13px; }
+  .row { display:flex; justify-content:space-between; align-items:center; margin-top:8px; }
+  .price { font-weight:700; font-size:16px; }
+  .stock { font-size:12px; padding:3px 9px; border-radius:999px; background:#1c3a2a; color:#5fd68a; }
+  .stock.no { background:#3a1c1c; color:#e06c6c; }
+  nav { position:fixed; bottom:0; left:0; right:0; background:#17212b; display:flex; }
+  nav button { flex:1; background:none; border:0; color:#7f91a4; padding:12px 0 16px;
+               font-size:13px; cursor:pointer; }
+  nav button.on { color:#fff; }
+  .sheet { position:fixed; inset:auto 0 0 0; background:#1b2836; border-radius:18px 18px 0 0;
+           padding:18px 16px 26px; display:none; max-height:82vh; overflow:auto; z-index:9; }
+  .sheet.open { display:block; }
+  .buy { width:100%; padding:13px; border:0; border-radius:12px; background:#2b9d5c;
+         color:#fff; font-size:16px; font-weight:700; cursor:pointer; margin-top:14px; }
+  .buy:disabled { background:#43586e; }
+  .ghost { width:100%; padding:11px; border:0; border-radius:12px; background:#2a3b4d;
+           color:#fff; font-size:15px; cursor:pointer; margin-top:8px; }
+  .msg { white-space:pre-wrap; background:#0e1621; border-radius:10px; padding:10px;
+         font-size:13px; margin-top:12px; display:none; }
+  .ord { background:#17212b; border-radius:12px; padding:12px; margin:8px 16px; font-size:14px; }
+  .pad { padding:16px; color:#c9d6e2; line-height:1.5; }
+</style>
+</head>
+<body>
+<header><span class="name" id="storeName">Store 🔥</span><span class="bal" id="bal">$0.00</span></header>
+
+<div id="view-shop">
+  <div class="search"><input id="q" placeholder="Search products..."></div>
+  <div class="grid" id="grid"></div>
+</div>
+<div id="view-profile" style="display:none"></div>
+<div id="view-deposit" style="display:none">
+  <div class="pad">💳 <b>Deposit</b><br><br>Crypto deposit is being set up — fresh address
+  per deposit with auto-confirmation, like the big stores. Your balance will show up top.</div>
+</div>
+<div id="view-refer" style="display:none">
+  <div class="pad">💲 <b>Refer &amp; Earn</b><br><br>Share the bot link from the chat menu —
+  friends who join from your /start link are counted under you.</div>
+</div>
+
+<div class="sheet" id="sheet"></div>
+<nav>
+  <button data-v="shop" class="on">🏬 Shop</button>
+  <button data-v="deposit">💳 Deposit</button>
+  <button data-v="profile">👤 Profile</button>
+  <button data-v="refer">💲 Refer</button>
+</nav>
+
+<script>
+const tg = window.Telegram && window.Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+const initData = tg ? tg.initData : "";
+const DEV = new URLSearchParams(location.search).get("dev") || "";
+let products = [], me = null, current = null;
+
+function authBody(extra) { return Object.assign({ initData, dev: DEV }, extra || {}); }
+async function api(path, body) {
+  const r = await fetch(path, body ? { method:"POST",
+    headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) }
+    : undefined);
+  return r.json();
+}
+function money(n){ return "$" + Number(n).toFixed(2); }
+
+function render() {
+  const q = document.getElementById("q").value.toLowerCase();
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  products.filter(p => p.name.toLowerCase().includes(q)).forEach(p => {
+    const d = document.createElement("div");
+    d.className = "card" + (p.available ? "" : " out");
+    const stock = p.unlimited ? "∞" : p.stock;
+    d.innerHTML = `<div class="t">${p.emoji || "🛍"} ${p.name}</div>
+      <div class="row"><span class="price">${money(p.price_usdt)}</span>
+      <span class="stock ${p.available ? "" : "no"}">${p.available ? "Stock: " + stock : "Sold Out"}</span></div>`;
+    if (p.available) d.onclick = () => openProduct(p);
+    grid.appendChild(d);
+  });
+}
+function openProduct(p) {
+  current = p;
+  const s = document.getElementById("sheet");
+  s.innerHTML = `<div style="font-size:18px;font-weight:700">${p.emoji || "🛍"} ${p.name}</div>
+    <div style="color:#a9bccf;margin-top:10px;line-height:1.5">${(p.description_text || "").replace(/\n/g,"<br>")}</div>
+    <div class="row"><span class="price">${money(p.price_usdt)}</span>
+    <span class="stock">Stock: ${p.unlimited ? "∞" : p.stock}</span></div>
+    <button class="buy" id="buyBtn">🛒 Buy — ${money(p.price_usdt)}</button>
+    <div class="msg" id="buyMsg"></div>
+    <button class="ghost" onclick="closeSheet()">Close</button>`;
+  s.classList.add("open");
+  document.getElementById("buyBtn").onclick = buy;
+}
+function closeSheet(){ document.getElementById("sheet").classList.remove("open"); }
+async function buy() {
+  const b = document.getElementById("buyBtn"), m = document.getElementById("buyMsg");
+  b.disabled = true; b.textContent = "Placing order...";
+  const r = await api("/api/buy", authBody({ product_id: current.id }));
+  m.style.display = "block";
+  if (r.ok) {
+    m.textContent = "✅ Delivered!\n\n" + (r.codes || []).join("\n") +
+      (r.how_to_use ? "\n\n" + r.how_to_use : "") +
+      (r.test_mode ? "\n\n🧪 Test order — no real money moved." : "");
+    b.textContent = "Delivered ✅";
+    loadMe();
+  } else {
+    m.textContent = r.reason === "low_balance"
+      ? `Your balance is ${money(r.balance)} but this costs ${money(r.needed)}. Deposit first.`
+      : "Could not complete that order. " + (r.reason || "");
+    b.disabled = false; b.textContent = "🛒 Buy — " + money(current.price_usdt);
+  }
+}
+async function loadMe() {
+  me = await api("/api/me", authBody());
+  if (me && me.balance_usdt !== undefined) {
+    document.getElementById("bal").textContent = money(me.balance_usdt);
+    document.getElementById("storeName").textContent = (me.store_name || "Store") + " 🔥";
+    const v = document.getElementById("view-profile");
+    v.innerHTML = `<div class="pad">👤 <b>${me.first_name || ""}</b><br>ID: ${me.telegram_id}<br>
+      💲 Balance: <b>${money(me.balance_usdt)}</b></div>` +
+      (me.orders || []).map(o => `<div class="ord">${o.product_name} — ${money(o.price_usdt)}
+        ${o.test_mode ? "(test)" : ""}</div>`).join("");
+  }
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); closeSheet();
+  ["shop","deposit","profile","refer"].forEach(v =>
+    document.getElementById("view-" + v).style.display = v === b.dataset.v ? "" : "none");
+  if (b.dataset.v === "profile") loadMe();
+});
+document.getElementById("q").oninput = render;
+(async () => {
+  const data = await api("/api/products");
+  products = data.products || [];
+  render(); loadMe();
+})();
+</script>
+</body>
+</html>
