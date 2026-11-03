@@ -309,7 +309,7 @@ def main():
     conn = store.db()
     total, buyable, _ = store.sync_products(conn, CFG)
     print(f"@{BOT_USERNAME} live. Synced {total} products ({buyable} buyable).")
-    threading.Thread(target=sync_loop, args=(store.db(),), daemon=True).start()
+    threading.Thread(target=sync_loop, args=(store.db(check_same_thread=False),), daemon=True).start()
     offset = 0
     while True:
         try:
